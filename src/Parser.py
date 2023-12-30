@@ -1,7 +1,10 @@
-from Lexer import *
+import json
+from Lexer import Lexer
 
-class Parser: 
+class Parser(Lexer): 
   def __init__(self):
+    super().__init__()
+
     self.tokens = []
 
   def not_eof(self):
@@ -18,11 +21,13 @@ class Parser:
 
     if prev is None or prev["type"] != tokenType:
       raise SyntaxError(error)
+    
+    return prev
 
   def produceAST(self, sourceCode):
-    self.tokens = Lexer().Tokenize(sourceCode)
+    self.tokens = self.Tokenize(sourceCode)
     program = {
-      "kind": "Program",
+      "NodeType": "Program",
       "body": []
     }
 
@@ -32,8 +37,41 @@ class Parser:
     return program
   
   def parse_stmt(self):
-    return self.parse_expr()
+    match self.at()["type"]:
+      case "BYTE" | "RESB":
+        return self.parse_var_declaration()
+
+      case _:
+        return self.parse_expr()
   
+  def parse_var_declaration(self):
+    isByte = self.eat()["type"] == "BYTE"
+    Identifier = self.expect("IDENTIFIER", "Identifier expected.")
+    
+    if self.at()["type"] == "SEMICOLON":
+      self.eat()
+      if isByte:
+        raise SyntaxError("Byte variables must have a value assigned.")
+      
+      return {
+        "NodeType": "VarDeclaration",
+        "Identifier": Identifier,
+        "type": "resb"
+      }
+
+    self.expect("EQUALS", "Expected equals in variable declaration.")
+    
+    declaration = {
+      "NodeType": "VarDeclaration",
+      "Identifier": Identifier,
+      "value": self.parse_expr(),
+      "type": "byte"
+    }
+
+    self.expect("SEMICOLON", "Expected ';' at the end of statement.")
+
+    return declaration
+
   def parse_expr(self):
     return self.parse_additive_expr()
   
@@ -44,7 +82,7 @@ class Parser:
       operator = self.eat()["value"]
       right = self.parse_multiplicative_expr()
       left = {
-        "kind": "BinaryExpr",
+        "NodeType": "BinaryExpr",
         "left": left,
         "right": right,
         "operator": operator
@@ -59,7 +97,7 @@ class Parser:
       operator = self.eat()["value"]
       right = self.parse_primary_expr()
       left = {
-        "kind": "BinaryExpr",
+        "NodeType": "BinaryExpr",
         "left": left,
         "right": right,
         "operator": operator
@@ -72,14 +110,14 @@ class Parser:
 
     match tk:
       case "IDENTIFIER":
-        return {"kind": "Identifier", "symbol": self.eat()["value"]}
+        return {"NodeType": "Identifier", "symbol": self.eat()["value"]}
       
       case "NUMBER":
-        return {"kind": "NumericLiteral", "value": float(self.eat()["value"])}
+        return {"NodeType": "NumericLiteral", "value": float(self.eat()["value"])}
       
       case "NULL":
         self.eat()
-        return {"kind": "NullLiteral", "value": "null"}
+        return {"NodeType": "NullLiteral", "value": "null"}
       
       case "OPAREN":
         self.eat()
@@ -87,5 +125,11 @@ class Parser:
         self.expect("CPAREN", "Unexpected token inside parenthesised expression. Expected closing parenthesis.")
         return value
       
+      case "EOF":
+        raise SyntaxError("Expression expected")
+
       case _:
         raise SyntaxError(f"Failed to parse: \"{self.eat()['value']}\"")
+
+tree = Parser().produceAST("byte")
+print(json.dumps(tree, indent=2))

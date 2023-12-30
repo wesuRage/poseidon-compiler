@@ -2,7 +2,7 @@ import re
 
 class Lexer:
   def __init__(self):
-    self.tokens = {
+    self.token_definitions = {
       "(": "OPAREN",
       ")": "CPAREN",
       "{": "OBRACE",
@@ -28,27 +28,30 @@ class Lexer:
       "'": "SQUOTES",
       "|": "BAR",
       "!": "EXCLAMATION",
-      "?": "INTERROGRATION",
+      "?": "INTERROGATION",
       "&": "AND",
-      "null": "NULL"
+      "null": "NULL",
+      "byte": "BYTE",
+      "resb": "RESB",
+      "label": "LABEL"
     }
 
-    self.tokensList = []
+    self.tokens_list = []
 
-  def Tokenize(self, sourceCode: str) -> list:
+  def Tokenize(self, source_code: str) -> list:
     tokens_regex = re.compile(r'\w+|.')
-    src = tokens_regex.findall(sourceCode)
+    src = tokens_regex.findall(source_code)
 
     for lexeme in src:
-      token_type = self.tokens.get(lexeme)
+      token_type = self.token_definitions.get(lexeme)
       if token_type:
-        self.tokensList.append({"value": lexeme, "type": self.tokens[lexeme]})
+        self.tokens_list.append({"value": lexeme, "type": self.token_definitions[lexeme]})
       elif lexeme.isdigit():
-        self.tokensList.append({"value": lexeme, "type": "NUMBER"})
+        self.tokens_list.append({"value": lexeme, "type": "NUMBER"})
       elif lexeme.isidentifier():
-        self.tokensList.append({"value": lexeme, "type": "IDENTIFIER"})
+        self.tokens_list.append({"value": lexeme, "type": "IDENTIFIER"})
       elif lexeme != " ":
         raise ValueError(f"Erro léxico: Lexema inesperado: {lexeme}")
 
-    self.tokensList.append({"value": "EOF", "type": "EOF"})
-    return self.tokensList
+    self.tokens_list.append({"value": "EOF", "type": "EOF"})
+    return self.tokens_list
