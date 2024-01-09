@@ -1,6 +1,6 @@
-from Parser import Parser 
+from Parser import Parser
 
-class Checker(Parser):
+class Checker:
   def __init__(self) -> None:
     super().__init__()
 
@@ -26,20 +26,30 @@ class Checker(Parser):
   def getNodeHandler(self, nodetype):
     return Checker.__dict__["eval_" + nodetype]
 
-  def eval_Program(self, sourceCode):
-    tree = self.produceAST(sourceCode)
-    for stmt in tree["body"]:
-      return self.getNodeHandler(stmt["NodeType"])(self, stmt)
+  def eval(self, node):
+    handler = self.getNodeHandler(node["NodeType"])
+    return handler(self, node)
+
+
+  def eval_Program(self, node):
+    for stmt in node["body"]:
+      self.eval(stmt)
   #Expressao
+  def eval_VarDeclaration(self, node):
+    return node
+
   def eval_NumericLiteral(self, node):
-    return 3
+    return node
+  
+  def eval_Identifier(self, node):
+    return node
 
   def eval_BinaryExpr(self, node):
     left = node["left"]
     right = node["right"]
 
-    ltype = self.getNodeHandler(left["NodeType"])(self, left)
-    rtype = self.getNodeHandler(right["NodeType"])(self, right)
+    ltype = self.eval(left)
+    rtype = self.eval(right)
 
     if not self.supportsOp(ltype, node["operator"]):
       raise TypeError(f"'{ltype}' doesnt supports operation '{node['operator']}'")
@@ -53,8 +63,9 @@ class Checker(Parser):
     typedef = self.typedefs[type]
 
     return typedef["has" + op]
-  
-  def eval_NullLiteral(self, node):
-    return "null"
 
-print(Checker().eval_Program("3 * 4 + 1"))
+parser = Parser()
+checker = Checker()
+
+tree = parser.produceAST("""resv dois;
+                         dois = 2;""")

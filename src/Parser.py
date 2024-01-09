@@ -1,10 +1,5 @@
-import json
-from Lexer import Lexer
-
-class Parser(Lexer): 
+class Parser: 
   def __init__(self):
-    super().__init__()
-
     self.tokens = []
 
   def not_eof(self):
@@ -24,13 +19,12 @@ class Parser(Lexer):
     
     return prev
 
-  def produceAST(self, sourceCode):
-    self.tokens = self.Tokenize(sourceCode)
+  def produceAST(self, tokens):
+    self.tokens = tokens
     program = {
       "NodeType": "Program",
       "body": []
     }
-
     while self.not_eof():
       program["body"].append(self.parse_stmt())
 
@@ -38,42 +32,68 @@ class Parser(Lexer):
   
   def parse_stmt(self):
     match self.at()["type"]:
-      case "BYTE" | "RESB":
+      case "BYTES" | "RESB":
         return self.parse_var_declaration()
 
       case _:
         return self.parse_expr()
   
   def parse_var_declaration(self):
-    isByte = self.eat()["type"] == "BYTE"
+    isBytes = self.eat()["type"] == "BYTES"
     Identifier = self.expect("IDENTIFIER", "Identifier expected.")
     
-    if self.at()["type"] == "SEMICOLON":
-      self.eat()
-      if isByte:
-        raise SyntaxError("Byte variables must have a value assigned.")
+    if isBytes:
+      self.expect("EQUALS", "Expected equals in variable declaration.")
       
-      return {
+      declaration = {
         "NodeType": "VarDeclaration",
         "Identifier": Identifier,
-        "type": "resb"
+        "value": self.parse_expr(),
+        "type": "constant" if isBytes else "reserved"
       }
+      self.expect("SEMICOLON", "Expected ';' at the end of statement.")
 
-    self.expect("EQUALS", "Expected equals in variable declaration.")
-    
-    declaration = {
-      "NodeType": "VarDeclaration",
-      "Identifier": Identifier,
-      "value": self.parse_expr(),
-      "type": "byte"
-    }
+    if not isBytes:
+      self.expect("OBRACKET", "Expected '[' for reserve's length.")
+      
+      length = self.parse_expr()
 
-    self.expect("SEMICOLON", "Expected ';' at the end of statement.")
+      self.expect("CBRACKET", "Expected ']' for reserve's length.")
+      if self.at()["type"] == "SEMICOLON":
+        declaration = {
+          "NodeType": "VarDeclaration",
+          "Identifier": Identifier,
+          "length": length,
+          "type": "reserved"
+        }
+      
+      else:  
+        self.expect("EQUALS", "Expected equals in variable declaration.")
+        value = self.parse_expr()
+        declaration = {
+          "NodeType": "VarDeclaration",
+          "Identifier": Identifier,
+          "length": length,
+          "value": value,
+          "type": "reserved"
+        }
+        self.expect("SEMICOLON", "Expected ';' at the end of statement.")
 
     return declaration
 
   def parse_expr(self):
-    return self.parse_additive_expr()
+    return self.parse_assignment_expr()
+
+  def parse_assignment_expr(self):
+    left = self.parse_additive_expr()
+
+    if self.at()["type"] == "EQUALS":
+      self.eat()
+      value = self.parse_assignment_expr()
+      self.expect("SEMICOLON", "Expected ';' at the end of statement.")
+      return {"NodeType": "AssignmentExpr", "assigne": left, "value": value}
+    
+    return left
   
   def parse_additive_expr(self):
     left = self.parse_multiplicative_expr()
@@ -110,15 +130,11 @@ class Parser(Lexer):
 
     match tk:
       case "IDENTIFIER":
-        return {"NodeType": "Identifier", "symbol": self.eat()["value"]}
+        return {"NodeType": "Identifier", "value": self.eat()["value"]}
       
       case "NUMBER":
         return {"NodeType": "NumericLiteral", "value": float(self.eat()["value"])}
-      
-      case "NULL":
-        self.eat()
-        return {"NodeType": "NullLiteral", "value": "null"}
-      
+            
       case "OPAREN":
         self.eat()
         value = self.parse_expr()
@@ -130,6 +146,3 @@ class Parser(Lexer):
 
       case _:
         raise SyntaxError(f"Failed to parse: \"{self.eat()['value']}\"")
-
-tree = Parser().produceAST("byte")
-print(json.dumps(tree, indent=2))

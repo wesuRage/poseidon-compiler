@@ -1,9 +1,0 @@
-#definicao de nos
-
-node Program = {body: list[Statement]}
-node Statement = {} or Expr
-node Expr = BinaryExpr or NumericLiteral or NullLiteral
-node BinaryExpr = {left: Expr, right: Expr, operator: Operator}
-type Operator = '+' or '-' or '/' or '*'
-node NumberLiteral = {value: float}
-node NullLiteral = {value: str = 'null'}

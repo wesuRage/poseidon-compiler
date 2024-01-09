@@ -1,0 +1,2 @@
+bytes num = 3;
+resb a[5] = 4;

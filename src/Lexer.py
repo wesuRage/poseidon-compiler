@@ -31,7 +31,7 @@ class Lexer:
       "?": "INTERROGATION",
       "&": "AND",
       "null": "NULL",
-      "byte": "BYTE",
+      "bytes": "BYTES",
       "resb": "RESB",
       "label": "LABEL"
     }
@@ -55,3 +55,5 @@ class Lexer:
 
     self.tokens_list.append({"value": "EOF", "type": "EOF"})
     return self.tokens_list
+
+  
